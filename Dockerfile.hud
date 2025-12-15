@@ -1,0 +1,57 @@
+# syntax=docker/dockerfile:1
+FROM hudevals/hud-browser-base:latest AS setup
+
+WORKDIR /app
+
+# Layer 1: Install main environment dependencies
+COPY pyproject.toml /app/
+RUN uv pip install --system --break-system-packages .
+
+# Layer 2: Install backend dependencies
+COPY backend/pyproject.toml /app/backend/
+RUN cd /app/backend && uv pip install --system --break-system-packages .
+
+# Layer 3: Copy source code
+COPY env.py /app/
+COPY tools/ /app/tools/
+COPY scenarios/ /app/scenarios/
+COPY backend/ /app/backend/
+
+# Auto-discover and install/build all frontend apps
+RUN set -e; \
+    for pkg in $(find /app/backend -type f -path '*/frontend/package.json'); do \
+        app_dir=$(dirname "$pkg"); \
+        echo "Installing dependencies in $app_dir"; \
+        if [ -f "$app_dir/package-lock.json" ]; then \
+            (cd "$app_dir" && npm ci --no-audit --no-fund); \
+        else \
+            (cd "$app_dir" && npm install --no-audit --no-fund); \
+        fi; \
+    done && \
+    for pkg in $(find /app/backend -type f -path '*/frontend/package.json'); do \
+        app_dir=$(dirname "$pkg"); \
+        if [ -f "$app_dir/next.config.js" ]; then \
+            echo "Building Next.js app in $app_dir"; \
+            (cd "$app_dir" && npm run build); \
+        fi; \
+    done
+
+# Make scripts executable
+RUN find /app/backend -name "*.py" -type f -exec chmod +x {} \;
+
+# Environment configuration
+ENV MCP_TRANSPORT="stdio"
+ENV HUD_LOG_STREAM="stderr"
+ENV PYTHONUNBUFFERED="1"
+ENV PYTHONWARNINGS="ignore::SyntaxWarning:pyautogui"
+ENV DISPLAY=":1"
+ENV PYTHONPATH=/app
+
+# Expose ports
+EXPOSE 8000 8080 3000-3200 5000-5200
+
+# Startup: backend first, then environment
+CMD ["sh", "-c", "\
+    uvicorn backend.server:app --host 0.0.0.0 --port 8000 --log-level warning >&2 & \
+    sleep 5 && exec hud dev env:env --stdio\
+"]

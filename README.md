@@ -1,191 +1,178 @@
 # Browser Environment
 
-Browser automation environment with GUI access for testing web applications. Includes sample apps (2048, Todo) and supports hot-reload development.
+Visual browser automation with multiple web apps (2048 game, todo app, etc.).
 
-## Architecture
+## 1. Deploy to Platform
 
-**`environment/`** - Produces structured data
-- FastAPI backend with X11/VNC services (Linux-only)
-- Launches and manages web apps (Next.js frontends + Python backends)
-- Exposes HTTP endpoints for app control and state
+If you haven't already, connect this repo to hud.ai:
 
-**`server/`** - Wraps data in MCP tools
-- Browser automation tools (Playwright, computer vision)
-- Setup tools (launch apps, seed data)
-- Evaluation tools (check game state, todo completion)
+1. Push to GitHub
+2. Go to [hud.ai](https://hud.ai) → **New** → **Environment**
+3. Connect your GitHub repo
+4. Your environment builds automatically on each push
 
-**Why separate?** The environment backend requires X11/VNC/Chromium (Docker-only). The MCP server tools can be edited with hot-reload, while the heavy environment stays running.
+Once deployed, your environment is accessible by its slug (e.g., `my-org/browser`).
 
-## Development
+## 2. Define Tools and Scenarios
 
-This environment **requires Docker** due to X11/VNC dependencies.
+### Tools (in `tools/`)
+
+Tools provide browser interaction capabilities:
+
+```python
+# tools/browser.py - Playwright and computer tools
+router.tool(playwright)
+router.tool(HudComputerTool(display_num=1))
+
+# tools/apps.py - App management
+@router.tool
+async def launch_app(app_name: str) -> str:
+    """Launch a specific application (e.g., 'todo', '2048')."""
+    ...
+```
+
+### Scenarios (in `scenarios/`)
+
+Scenarios define the evaluation lifecycle:
+
+```python
+# scenarios/game_2048.py
+@env.scenario("2048-reach-tile")
+async def reach_tile(target: int = 512) -> Any:
+    # Setup: Launch 2048 and initialize game
+    await http_client.post("/apps/launch", json={"app_name": "2048"})
+    
+    # Yield prompt
+    _ = yield f"Play 2048 and reach the {target} tile."
+    
+    # Evaluate: Check highest tile
+    state = await http_client.get(f"http://localhost:{port}/api/game/state")
+    yield min(1.0, math.log(highest) / math.log(target))
+```
+
+## 3. Create Tasks from Scenarios
+
+**In Code:**
+
+```python
+from env import env
+
+task = env("2048-reach-tile", target=512)
+task = env("todo-complete", expected_count=3)
+```
+
+**From JSON (`remote_tasks.json`):**
+
+```json
+{
+  "env": {"name": "my-org/browser"},
+  "scenario": "2048-reach-tile",
+  "args": {"target": 512}
+}
+```
+
+**From Platform:**
+
+```python
+from hud.datasets import load_tasks
+
+tasks = load_tasks("my-org/browser-tasks")
+```
+
+## 4. Run Evaluations
+
+Run tasks and see results on hud.ai.
+
+**On Platform:**
+Run evaluations at scale directly on [hud.ai](https://hud.ai) with parallel execution and automatic tracing.
+
+**CLI:**
 
 ```bash
-# Build first (creates hud-browser:0.1.0)
-hud build
+# From local JSON file
+hud eval ./remote_tasks.json --model gpt-4o --remote  # https://hud.ai/models
 
-# Start with hot-reload
-hud dev
+# From platform dataset
+hud eval my-org/browser --model gpt-4o --remote --group 5
 ```
 
-When you run `hud dev` in an environment with a Dockerfile, it automatically:
-- Detects Docker mode is needed
-- Mounts `server/` and `environment/` as volumes
-- Enables hot-reload for both layers
+**Python:**
 
-Edit files in `server/` or `environment/` and they reload inside the container!
-
-## Publishing Your Environment
-
-Once your environment is ready, you can share it with the community:
-
-### 1. Push to Registry
-```bash
-# Build and push your environment (requires docker hub login and hud api key)
-hud build
-hud push
-```
-
-### 2. Create a Dataset
-
-Create a dataset on HuggingFace with your tasks:
-
-**Option A: Upload manually**
-1. Upload your `tasks.json` to HuggingFace
-2. Make sure it's **public** to appear on leaderboards
-
-**Option B: Use the SDK**
 ```python
-from hud.datasets import save_tasks
-import json
+import hud
+from hud.agents import OpenAIChatAgent
 
-# Load your tasks
-with open("tasks.json") as f:
-    tasks = json.load(f)
+task = env("2048-reach-tile", target=256)
 
-# Push to HuggingFace
-save_tasks(tasks, repo_id="your-org/your-dataset")
+async with hud.eval(task) as ctx:
+    agent = OpenAIChatAgent.create(model="gpt-4o")  # https://hud.ai/models
+    await agent.run(ctx)
 ```
 
-### 3. Run and Track Performance
+**With Variants (A/B Testing):**
+
+```python
+tasks = [env("2048-reach-tile", target=256), env("todo-complete", expected_count=2)]
+variants = {"model": ["gpt-4o-mini", "gpt-4o"]}
+
+async with hud.eval(tasks, variants=variants, group=2) as ctx:
+    agent = OpenAIChatAgent.create(model=ctx.variants["model"])
+    await agent.run(ctx, max_steps=20)
+```
+
+## Local Development
 
 ```bash
-# Run Claude on your benchmark
-hud eval "your-org/your-dataset" --agent claude
+# 1. Install dependencies
+pip install -e .
 
-# View results at:
-# hud.so/leaderboards/your-org/your-dataset
+# 2. Set up environment
+cp .env.example .env
+# Edit .env with your HUD_API_KEY
+
+# 3. Run tests
+python local_test.py
 ```
 
-**Note**: Only public HuggingFace datasets appear as leaderboards!
+Note: The full browser environment requires Docker with X11/VNC. For local testing without Docker, only standalone tool tests will work.
 
-📚 Learn more: [Creating Benchmarks](https://docs.hud.so/evaluate-agents/create-benchmarks) | [Leaderboards](https://docs.hud.so/evaluate-agents/leaderboards)
+## Structure
 
-## Architecture Overview
-
-The browser environment uses a two-process architecture:
-
-1. **Context Server** (`context.py`): Long-running process that maintains persistent state
-2. **MCP Server** (`server.py`): Hot-reloadable process that handles tool requests
-
-### Key Components
-
-- **BrowserContext**: Stores persistent state (running apps, ports, playwright instance)
-- **ServiceManager**: Manages X11, VNC, and app processes
-- **BaseHub Tools**: Setup and evaluate tools organized by app (2048, todo)
-- **Multiprocessing Proxy**: Enables state sharing between processes
-
-### 1. Tool Implementation Pattern
-
-All setup and evaluate tools should follow this pattern:
-
-```python
-@setup.tool("tool_name")
-async def tool_name(param1: type, param2: type):
-    """Tool description."""
-    try:
-        # Get persistent context
-        persistent_ctx = setup.env  # or evaluate.env
-        
-        # Get app ports
-        backend_port = persistent_ctx.get_app_backend_port("app_name")
-        
-        # Make HTTP request
-        url = f"http://localhost:{backend_port}/api/endpoint"
-        async with httpx.AsyncClient() as client:
-            response = await client.method(url, json=data)
-            response.raise_for_status()
-            result = response.json()
-        
-        # Return result
-        return TextContent(
-            text=f"Success message",
-            type="text"
-        )
-    except Exception as e:
-        logger.error(f"tool_name failed: {e}")
-        return TextContent(
-            text=f"Failed: {str(e)}",
-            type="text"
-        )
+```
+hud-browser/
+├── env.py                  # Main environment entry point
+├── tools/
+│   ├── __init__.py
+│   ├── browser.py          # Playwright, computer tools
+│   └── apps.py             # launch_app, api_request
+├── scenarios/
+│   ├── __init__.py
+│   ├── game_2048.py        # 2048-reach-tile, 2048-near-win, 2048-score
+│   └── todo.py             # todo-complete, todo-create, todo-completion-rate
+├── backend/
+│   ├── server.py           # FastAPI managing X11/VNC/apps
+│   ├── 2048/               # 2048 game (backend + frontend)
+│   └── todo/               # Todo app (backend + frontend)
+├── local_test.py
+├── remote_test.py
+├── remote_tasks.json
+├── Dockerfile.hud
+├── pyproject.toml
+├── .env.example
+└── .gitignore
 ```
 
-### 2. App Launch Pattern
+## Available Scenarios
 
-When launching apps, ensure ports are stored in the persistent context:
+| Scenario | Args | Description |
+|----------|------|-------------|
+| `2048-reach-tile` | `target` (int) | Play until reaching target tile |
+| `2048-near-win` | `target` (int) | Start near-win, finish the game |
+| `2048-score` | `target_score` (int) | Play until reaching score |
+| `todo-complete` | `expected_count` (int) | Complete N todos |
+| `todo-create` | `title` (str) | Create todo with specific title |
+| `todo-completion-rate` | `target_rate` (float) | Complete percentage of todos |
 
-```python
-# In launch_app tool
-app_info = await service_manager.launch_app(app_name)
+## Documentation
 
-# Store ports in persistent context for later access
-try:
-    backend_port = service_manager.get_app_port(app_name)
-    frontend_port = service_manager.get_app_frontend_port(app_name)
-    persistent_ctx.set_app_ports(app_name, frontend_port, backend_port)
-except Exception as e:
-    logger.error(f"Failed to store ports: {e}")
-
-# Track app in persistent context
-persistent_ctx.add_running_app(app_name)
-```
-
-### 3. Import Organization
-
-Keep imports at module level:
-
-```python
-# At top of file
-import logging
-import httpx
-from mcp.types import TextContent
-from . import setup
-
-# Not inside functions
-```
-
-## Development Workflow
-
-1. **Start the environment**: `hud dev`
-2. **Make changes**: Edit tools in `src/hud_controller/`
-3. **Test immediately**: The MCP server hot-reloads automatically
-4. **Check logs**: Look for serialization or proxy errors
-
-## Adding New Apps
-
-1. Create app directory in `apps/`
-2. Add setup tools in `src/hud_controller/setup/app_name.py`
-3. Add evaluate tools in `src/hud_controller/evaluate/app_name.py`
-4. Follow the HTTP pattern - no `call_app_api` usage
-5. Store app ports in persistent context when launching
-
-## Key Files
-
-- `context.py`: Persistent state management
-- `server.py`: MCP server and tool definitions
-- `services.py`: Process management for X11, VNC, apps
-- `setup/`: Setup tools organized by app
-- `evaluate/`: Evaluation tools organized by app
-
-Remember: When in doubt, make direct HTTP calls and store state in the persistent context!
-
+Full documentation: [docs.hud.ai](https://docs.hud.ai)
