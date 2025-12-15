@@ -15,9 +15,9 @@ Once deployed, your environment is accessible by its slug (e.g., `my-org/browser
 
 ## 2. Define Tools and Scenarios
 
-### Tools (in `tools/`)
+Tools are functions agents can call. Scenarios define the evaluation lifecycle.
 
-Tools provide browser interaction capabilities:
+### Tools (in `tools/`)
 
 ```python
 # tools/browser.py - Playwright and computer tools
@@ -52,6 +52,8 @@ async def reach_tile(target: int = 512) -> Any:
 
 ## 3. Create Tasks from Scenarios
 
+Tasks are scenario instances with specific arguments.
+
 **In Code:**
 
 ```python
@@ -71,17 +73,18 @@ task = env("todo-complete", expected_count=3)
 }
 ```
 
-**From Platform:**
+**On Platform:**
+
+After deploying, create tasks from your scenarios on hud.ai. Access them by slug:
 
 ```python
 from hud.datasets import load_tasks
-
 tasks = load_tasks("my-org/browser-tasks")
 ```
 
 ## 4. Run Evaluations
 
-Run tasks and see results on hud.ai.
+Run tasks and see results on hud.ai. You have three options:
 
 **On Platform:**
 Run evaluations at scale directly on [hud.ai](https://hud.ai) with parallel execution and automatic tracing.
@@ -122,19 +125,29 @@ async with hud.eval(tasks, variants=variants, group=2) as ctx:
 
 ## Local Development
 
+This environment requires Docker (for X11/VNC). Use `hud dev` with hot-reload:
+
 ```bash
-# 1. Install dependencies
-pip install -e .
+# 1. Build the Docker image (first time only)
+hud build
 
-# 2. Set up environment
-cp .env.example .env
-# Edit .env with your HUD_API_KEY
+# 2. Start with hot-reload on scenarios
+hud dev -w scenarios -w tools --port 8765
 
-# 3. Run tests
+# 3. Test locally
 python local_test.py
 ```
 
-Note: The full browser environment requires Docker with X11/VNC. For local testing without Docker, only standalone tool tests will work.
+### Hot-Reload
+
+| Component | Reloaded? |
+|-----------|-----------|
+| `scenarios/*.py` | ✅ Yes |
+| `tools/*.py` | ✅ Yes (if watched) |
+| `backend/` | ❌ No (has frontend builds) |
+| X11/VNC services | ❌ No (persist) |
+
+**When to rebuild:** Dockerfile changes, backend apps, frontend builds.
 
 ## Structure
 
@@ -147,7 +160,7 @@ hud-browser/
 │   └── apps.py             # launch_app, api_request
 ├── scenarios/
 │   ├── __init__.py
-│   ├── game_2048.py        # 2048-reach-tile, 2048-near-win, 2048-score
+│   ├── game_2048.py        # 2048-reach-tile, 2048-custom-board, 2048-score
 │   └── todo.py             # todo-complete, todo-create, todo-completion-rate
 ├── backend/
 │   ├── server.py           # FastAPI managing X11/VNC/apps
@@ -167,11 +180,22 @@ hud-browser/
 | Scenario | Args | Description |
 |----------|------|-------------|
 | `2048-reach-tile` | `target` (int) | Play until reaching target tile |
-| `2048-near-win` | `target` (int) | Start near-win, finish the game |
+| `2048-custom-board` | `board`, `goal_tile`, `prompt?` | Start from custom board state |
 | `2048-score` | `target_score` (int) | Play until reaching score |
 | `todo-complete` | `expected_count` (int) | Complete N todos |
 | `todo-create` | `title` (str) | Create todo with specific title |
 | `todo-completion-rate` | `target_rate` (float) | Complete percentage of todos |
+
+### Custom Board Example
+
+```python
+# Start from a specific board configuration
+task = env("2048-custom-board",
+    board=[[256, 128, 64, 32], [128, 64, 32, 16], [64, 32, 16, 8], [0, 0, 4, 2]],
+    goal_tile=512,
+    prompt="Merge tiles to reach 512. The 256 is in the corner."
+)
+```
 
 ## Documentation
 

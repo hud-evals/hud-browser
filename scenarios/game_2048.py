@@ -90,12 +90,22 @@ Start by taking a screenshot."""
             logger.error("2048 evaluation failed: %s", e)
             yield 0.0
     
-    @env.scenario("2048-near-win")
-    async def near_win(target: int = 2048) -> Any:
-        """Start with a near-winning board and finish the game.
+    @env.scenario("2048-custom-board")
+    async def custom_board(
+        board: list[list[int]],
+        goal_tile: int,
+        prompt: str | None = None,
+        score: int = 0,
+        moves: int = 0,
+    ) -> Any:
+        """Start from a custom board state and reach a goal tile.
         
         Args:
-            target: Target tile to reach (board is set up one merge away)
+            board: 4x4 list of tile values (0 for empty)
+            goal_tile: Target tile value to reach
+            prompt: Optional custom prompt (auto-generated if not provided)
+            score: Initial score
+            moves: Initial move count
         """
         # Setup: Launch app
         response = await http_client.post("/apps/launch", json={"app_name": "2048"})
@@ -106,43 +116,52 @@ Start by taking a screenshot."""
         app_info = response.json()
         backend_port = app_info.get("backend_port", 5001)
         
-        # Create near-win board
-        if target == 2048:
-            board = [[1024, 1024, 256, 128], [512, 256, 64, 32], [128, 64, 16, 8], [32, 16, 4, 2]]
-        elif target == 1024:
-            board = [[512, 512, 128, 64], [256, 128, 32, 16], [64, 32, 8, 4], [16, 8, 2, 0]]
-        else:
-            half = target // 2
-            quarter = target // 4
-            board = [
-                [half, half, quarter, quarter // 2],
-                [quarter, quarter // 2, 16, 8],
-                [16, 8, 4, 2],
-                [4, 2, 0, 0],
-            ]
-        
+        # Set the custom board
         await http_client.post(
             f"http://localhost:{backend_port}/api/eval/set_board",
-            json={"board": board, "score": sum(sum(row) for row in board) * 2, "moves": 150}
+            json={"board": board, "score": score, "moves": moves}
         )
         
-        logger.info("2048 near-win scenario: target=%d", target)
+        # Also set the target tile
+        await http_client.post(
+            f"http://localhost:{backend_port}/api/game/set_target",
+            json={"target_tile": goal_tile}
+        )
         
-        prompt = f"""You're one move away from winning! Reach the {target} tile.
+        # Find highest current tile
+        highest = max(max(row) for row in board)
+        
+        logger.info("2048 custom board scenario: goal=%d, highest=%d", goal_tile, highest)
+        
+        # Generate prompt
+        if prompt:
+            task_prompt = prompt
+        else:
+            task_prompt = f"""Play 2048 from the current board state and reach the {goal_tile} tile.
 
-The board is set up with two {target // 2} tiles ready to merge.
-Use arrow keys to make the winning move.
+The board already has a {highest} tile. Strategically merge tiles to reach {goal_tile}.
+
+Use the computer tool to:
+1. Take a screenshot to see the current board
+2. Press arrow keys (up, down, left, right) to make moves
+3. Continue until you reach {goal_tile} or the game ends
 
 Take a screenshot first to see the board."""
         
-        _ = yield prompt
+        _ = yield task_prompt
         
-        # Evaluate
+        # Evaluate: Check if goal reached
         try:
             state_response = await http_client.get(f"http://localhost:{backend_port}/api/game/state")
             game_state = state_response.json()
-            won = game_state.get("won", False) or game_state.get("highest_tile", 0) >= target
-            yield 1.0 if won else 0.0
+            highest_tile = game_state.get("highest_tile", 0)
+            
+            if highest_tile >= goal_tile:
+                yield 1.0
+            else:
+                # Partial reward based on progress
+                reward = min(1.0, math.log(highest_tile) / math.log(goal_tile)) if highest_tile > 1 else 0.0
+                yield reward
         except Exception:
             yield 0.0
     

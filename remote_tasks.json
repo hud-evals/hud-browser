@@ -11,8 +11,20 @@
   },
   {
     "env": {"name": "my-org/browser"},
-    "scenario": "2048-near-win",
-    "args": {"target": 2048}
+    "scenario": "2048-custom-board",
+    "args": {
+      "board": [[1024, 512, 256, 128], [512, 256, 64, 32], [128, 64, 16, 8], [32, 16, 4, 2]],
+      "goal_tile": 2048
+    }
+  },
+  {
+    "env": {"name": "my-org/browser"},
+    "scenario": "2048-custom-board",
+    "args": {
+      "board": [[256, 128, 64, 32], [128, 64, 32, 16], [64, 32, 16, 8], [0, 0, 4, 2]],
+      "goal_tile": 512,
+      "prompt": "Merge tiles to reach 512. The board has a 256 in the corner."
+    }
   },
   {
     "env": {"name": "my-org/browser"},
