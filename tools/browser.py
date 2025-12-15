@@ -7,7 +7,7 @@ import time
 import httpx
 
 from hud.server import MCPRouter
-from hud.tools import PlaywrightTool, HudComputerTool, AnthropicComputerTool, OpenAIComputerTool
+from hud.tools import PlaywrightTool, HudComputerTool, AnthropicComputerTool, OpenAIComputerTool, GeminiComputerTool, QwenComputerTool
 
 logger = logging.getLogger(__name__)
 
@@ -50,5 +50,7 @@ router.tool(playwright)
 router.tool(HudComputerTool(display_num=1))
 router.tool(AnthropicComputerTool(display_num=1))
 router.tool(OpenAIComputerTool(display_num=1))
+router.tool(GeminiComputerTool(display_num=1))
+router.tool(QwenComputerTool(display_num=1))
 
 __all__ = ["router", "http_client", "BACKEND_URL", "playwright"]

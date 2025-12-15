@@ -138,6 +138,12 @@ hud dev -w scenarios -w tools --port 8765
 python local_test.py
 ```
 
+> ⚠️ **Local runs one task at a time.** The local environment uses a single browser/VNC session, so tasks run sequentially. For parallel execution, push and run remotely:
+> ```bash
+> hud push
+> hud eval ./remote_tasks.json --model gpt-4o --remote --group 5
+> ```
+
 ### Hot-Reload
 
 | Component | Reloaded? |

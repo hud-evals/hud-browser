@@ -88,22 +88,6 @@ async def test_custom_board():
         await agent.run(ctx, max_steps=15)
 
 
-async def test_distribution():
-    """Test multiple tasks with variants and groups for A/B testing."""
-    print("\n=== Test 5: Distribution (Variants + Groups) ===")
-
-    tasks = [
-        env("2048-reach-tile", target=64),
-        env("todo-complete", expected_count=2),
-    ]
-    variants = {"model": ["gpt-4o-mini", "gpt-4o"]}
-    group = 2
-
-    async with hud.eval(tasks, variants=variants, group=group) as ctx:
-        agent = OpenAIChatAgent.create(model=ctx.variants["model"])
-        await agent.run(ctx, max_steps=20)
-
-
 async def main():
     print("Browser Environment - Local Test")
     print("=" * 50)
@@ -118,7 +102,6 @@ async def main():
     # await test_2048_scenario()
     # await test_todo_scenario()
     # await test_custom_board()
-    # await test_distribution()
 
 
 if __name__ == "__main__":
