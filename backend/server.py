@@ -183,7 +183,7 @@ class ServiceManager:
                     backend_port=app_info.backend_port,
                 )
 
-        app_path = Path(f"/app/environment/{app_name}")
+        app_path = Path(f"/app/backend/{app_name}")
         if not app_path.exists():
             raise ValueError(f"App '{app_name}' not found at {app_path}")
 
