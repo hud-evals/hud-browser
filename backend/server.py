@@ -65,11 +65,9 @@ class ServiceManager:
         self.x11_proc: Optional[subprocess.Popen] = None
         self.vnc_proc: Optional[subprocess.Popen] = None
         self.websockify_proc: Optional[subprocess.Popen] = None
-        self.chrome_proc: Optional[subprocess.Popen] = None
+        self.browser_proc: Optional[subprocess.Popen] = None
         self.cdp_port: Optional[int] = None
         self._launched_apps: Dict[str, AppInfo] = {}
-        self._playwright = None
-        self._browser = None
         self._app_processes: Dict[str, subprocess.Popen] = {}
         self._allocated_ports: Set[int] = set()
 
@@ -131,49 +129,46 @@ class ServiceManager:
         )
         logger.info("noVNC available at: http://localhost:8080/vnc.html")
 
-        # Start Playwright's Chromium browser
-        logger.info("Starting Playwright's Chromium browser")
-        try:
-            from playwright.async_api import async_playwright
+        # Start BrowserOS browser with CDP enabled
+        await self._start_browser()
 
-            self._playwright = await async_playwright().start()
-            # Get a free port for CDP
-            self.cdp_port = self._get_next_port()
+    async def _start_browser(self):
+        """Start BrowserOS browser with CDP enabled."""
+        browseros_bin = os.environ.get("BROWSEROS_BIN")
 
-            self._browser = await self._playwright.chromium.launch(
-                headless=False,
-                args=[
-                    f"--remote-debugging-port={self.cdp_port}",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                    "--disable-web-security",
-                    "--disable-features=IsolateOrigins,site-per-process",
-                    "--display=:1",
-                    "--start-maximized",
-                ],
-                env={**os.environ, "DISPLAY": ":1"},
+        if not browseros_bin or not Path(browseros_bin).exists():
+            raise FileNotFoundError(
+                "BROWSEROS_BIN environment variable not set or points to invalid path"
             )
 
-            logger.info(f"Started Playwright Chromium with CDP on port {self.cdp_port}")
+        # Get a free port for CDP
+        self.cdp_port = self._get_next_port()
 
-            # Wait for CDP to be ready
-            await self._wait_for_port(self.cdp_port, "CDP", timeout=30)
+        logger.info(f"Starting BrowserOS browser from {browseros_bin}")
 
-            # Open a default page so the browser window is visible
-            default_context = await self._browser.new_context(
-                viewport={"width": 1920, "height": 1080}, no_viewport=False
-            )
-            default_page = await default_context.new_page()
-            await default_page.goto("about:blank")
-            logger.info("Opened default browser page")
+        self.browser_proc = subprocess.Popen(
+            [
+                browseros_bin,
+                f"--remote-debugging-port={self.cdp_port}",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-web-security",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--start-maximized",
+                "about:blank",
+            ],
+            env={**os.environ, "DISPLAY": ":1"},
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
 
-        except ImportError:
-            logger.error("Playwright not installed")
-            raise RuntimeError("Playwright is required. The Docker image should have installed it.")
-        except Exception as e:
-            logger.error(f"Failed to start Playwright browser: {e}")
-            raise
+        logger.info(f"Started BrowserOS with CDP on port {self.cdp_port}")
+
+        # Wait for CDP to be ready (longer timeout for BrowserOS initial startup)
+        await self._wait_for_port(self.cdp_port, "CDP", timeout=60)
+        logger.info("BrowserOS CDP is ready")
 
     async def launch_app(self, app_name: str) -> LaunchAppResponse:
         """Launch a specific app dynamically."""
@@ -301,20 +296,16 @@ class ServiceManager:
         self._launched_apps.clear()
         self._allocated_ports.clear()
 
-        # Close Playwright browser
-        if self._browser:
+        # Close BrowserOS browser
+        if self.browser_proc and self.browser_proc.poll() is None:
             try:
-                await self._browser.close()
-                logger.info("Closed Playwright browser")
+                self.browser_proc.terminate()
+                await asyncio.sleep(1)
+                if self.browser_proc.poll() is None:
+                    self.browser_proc.kill()
+                logger.info("Closed BrowserOS browser")
             except Exception as e:
                 logger.error(f"Error closing browser: {e}")
-
-        if self._playwright:
-            try:
-                await self._playwright.stop()
-                logger.info("Stopped Playwright")
-            except Exception as e:
-                logger.error(f"Error stopping playwright: {e}")
 
         # Stop services in reverse order
         for proc, name in [
