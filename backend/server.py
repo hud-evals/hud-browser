@@ -156,6 +156,8 @@ class ServiceManager:
                 "--disable-web-security",
                 "--disable-features=IsolateOrigins,site-per-process",
                 "--start-maximized",
+                "--no-first-run",
+                "--disable-extensions",
                 "about:blank",
             ],
             env={**os.environ, "DISPLAY": ":1"},
