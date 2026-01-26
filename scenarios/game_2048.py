@@ -106,6 +106,8 @@ Start by taking a screenshot."""
         app_info = response.json()
         backend_port = app_info.get("backend_port", 5001)
         
+        target = int(target) 
+        
         # Create near-win board
         if target == 2048:
             board = [[1024, 1024, 256, 128], [512, 256, 64, 32], [128, 64, 16, 8], [32, 16, 4, 2]]
