@@ -3,6 +3,7 @@ import logging
 import math
 from typing import Any
 
+from tools.apps import _launch_app_internal
 from tools.browser import http_client
 
 logger = logging.getLogger(__name__)
@@ -36,16 +37,16 @@ def register_scenarios(env: Any) -> None:
             target: Target tile value to reach (e.g., 512, 1024, 2048)
             board_size: Size of the game board (default: 4)
         """
-        # Setup: Launch app and initialize game
-        response = await http_client.post("/apps/launch", json={"app_name": "2048"})
-        if response.status_code != 200:
-            logger.error("Failed to launch 2048: %s", response.text)
+        # Setup: Launch app and navigate to it
+        try:
+            app_info = await _launch_app_internal("2048")
+        except Exception as e:
+            logger.error("Failed to launch 2048: %s", e)
             yield 0.0
             return
-            
-        app_info = response.json()
+
         backend_port = app_info.get("backend_port", 5001)
-        
+
         # Initialize new game
         await http_client.post(
             f"http://localhost:{backend_port}/api/game/new",
@@ -97,15 +98,17 @@ Start by taking a screenshot."""
         Args:
             target: Target tile to reach (board is set up one merge away)
         """
-        # Setup: Launch app
-        response = await http_client.post("/apps/launch", json={"app_name": "2048"})
-        if response.status_code != 200:
+        # Setup: Launch app and navigate to it
+        try:
+            app_info = await _launch_app_internal("2048")
+        except Exception as e:
+            logger.error("Failed to launch 2048: %s", e)
             yield 0.0
             return
-            
-        app_info = response.json()
+
         backend_port = app_info.get("backend_port", 5001)
-        
+        target = int(target)
+
         # Create near-win board
         if target == 2048:
             board = [[1024, 1024, 256, 128], [512, 256, 64, 32], [128, 64, 16, 8], [32, 16, 4, 2]]
@@ -153,15 +156,15 @@ Take a screenshot first to see the board."""
         Args:
             target_score: Target score to reach
         """
-        # Setup
-        response = await http_client.post("/apps/launch", json={"app_name": "2048"})
-        if response.status_code != 200:
+        # Setup: Launch app and navigate to it
+        try:
+            app_info = await _launch_app_internal("2048")
+        except Exception as e:
+            logger.error("Failed to launch 2048: %s", e)
             yield 0.0
             return
-            
-        app_info = response.json()
+
         backend_port = app_info.get("backend_port", 5001)
-        
         await http_client.post(f"http://localhost:{backend_port}/api/game/new", json={})
         
         prompt = f"""Play 2048 and try to reach a score of {target_score}.

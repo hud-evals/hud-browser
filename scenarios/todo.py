@@ -2,6 +2,7 @@
 import logging
 from typing import Any
 
+from tools.apps import _launch_app_internal
 from tools.browser import http_client
 
 logger = logging.getLogger(__name__)
@@ -17,16 +18,16 @@ def register_scenarios(env: Any) -> None:
         Args:
             expected_count: Number of todos that should be completed
         """
-        # Setup: Launch app and seed with todos
-        response = await http_client.post("/apps/launch", json={"app_name": "todo"})
-        if response.status_code != 200:
-            logger.error("Failed to launch todo: %s", response.text)
+        # Setup: Launch app and navigate to it
+        try:
+            app_info = await _launch_app_internal("todo")
+        except Exception as e:
+            logger.error("Failed to launch todo: %s", e)
             yield 0.0
             return
-            
-        app_info = response.json()
+
         backend_port = app_info.get("backend_port", 5000)
-        
+
         # Seed with test todos
         await http_client.post(f"http://localhost:{backend_port}/api/eval/seed")
         
@@ -69,15 +70,16 @@ Start by taking a screenshot."""
         Args:
             title: The exact title the new todo should have
         """
-        # Setup: Launch app with empty state
-        response = await http_client.post("/apps/launch", json={"app_name": "todo"})
-        if response.status_code != 200:
+        # Setup: Launch app and navigate to it
+        try:
+            app_info = await _launch_app_internal("todo")
+        except Exception as e:
+            logger.error("Failed to launch todo: %s", e)
             yield 0.0
             return
-            
-        app_info = response.json()
+
         backend_port = app_info.get("backend_port", 5000)
-        
+
         # Reset to empty
         await http_client.delete(f"http://localhost:{backend_port}/api/eval/reset")
         
@@ -110,13 +112,14 @@ The todo title must be exactly: {title}"""
         Args:
             target_rate: Target completion rate (0.0 to 1.0)
         """
-        # Setup
-        response = await http_client.post("/apps/launch", json={"app_name": "todo"})
-        if response.status_code != 200:
+        # Setup: Launch app and navigate to it
+        try:
+            app_info = await _launch_app_internal("todo")
+        except Exception as e:
+            logger.error("Failed to launch todo: %s", e)
             yield 0.0
             return
-            
-        app_info = response.json()
+
         backend_port = app_info.get("backend_port", 5000)
         
         await http_client.post(f"http://localhost:{backend_port}/api/eval/seed")

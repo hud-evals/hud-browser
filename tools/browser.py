@@ -47,8 +47,8 @@ playwright = PlaywrightTool(cdp_url=_discover_cdp_url())
 
 # Register tools with router
 router.tool(playwright)
-router.tool(HudComputerTool(display_num=1))
 router.tool(AnthropicComputerTool(display_num=1))
 router.tool(OpenAIComputerTool(display_num=1))
+router.tool(HudComputerTool(display_num=1, name="hud_computer"))
 
 __all__ = ["router", "http_client", "BACKEND_URL", "playwright"]
