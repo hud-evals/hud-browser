@@ -25,6 +25,7 @@ COPY env.py /app/
 COPY tools/ /app/tools/
 COPY scenarios/ /app/scenarios/
 COPY backend/ /app/backend/
+COPY tests/ /app/tests/
 
 # Auto-discover and install/build all frontend apps
 RUN set -e; \

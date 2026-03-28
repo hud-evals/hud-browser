@@ -29,7 +29,7 @@ Strategy: keep highest tiles in a corner; maintain order; avoid random moves."""
 def register_scenarios(env: Any) -> None:
     """Register 2048 game scenarios with the environment."""
     
-    @env.scenario("2048-reach-tile")
+    @env.scenario("2048-reach-tile", exclude_tools=["hud_validate"])
     async def reach_tile(target: int = 512, board_size: int = 4) -> Any:
         """Play 2048 and try to reach the target tile.
         
@@ -91,7 +91,7 @@ Start by taking a screenshot."""
             logger.error("2048 evaluation failed: %s", e)
             yield 0.0
     
-    @env.scenario("2048-near-win")
+    @env.scenario("2048-near-win", exclude_tools=["hud_validate"])
     async def near_win(target: int = 2048) -> Any:
         """Start with a near-winning board and finish the game.
         
@@ -149,7 +149,7 @@ Take a screenshot first to see the board."""
         except Exception:
             yield 0.0
     
-    @env.scenario("2048-score")
+    @env.scenario("2048-score", exclude_tools=["hud_validate"])
     async def reach_score(target_score: int = 5000) -> Any:
         """Play 2048 and try to reach a target score.
         
