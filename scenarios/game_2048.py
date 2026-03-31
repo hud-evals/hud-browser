@@ -26,9 +26,12 @@ BROWSER INTERACTION:
 Strategy: keep highest tiles in a corner; maintain order; avoid random moves."""
 
 
-def register_scenarios(env: Any) -> None:
-    """Register 2048 game scenarios with the environment."""
-    
+def register_scenarios(env: Any) -> dict:
+    """Register 2048 game scenarios with the environment.
+
+    Returns a dict of scenario handles for use by tasks.py.
+    """
+
     @env.scenario("2048-reach-tile")
     async def reach_tile(target: int = 512, board_size: int = 4) -> Any:
         """Play 2048 and try to reach the target tile.
@@ -183,3 +186,9 @@ Focus on efficient tile merging to maximize your score."""
             yield reward
         except Exception:
             yield 0.0
+
+    return {
+        "reach_tile": reach_tile,
+        "near_win": near_win,
+        "reach_score": reach_score,
+    }

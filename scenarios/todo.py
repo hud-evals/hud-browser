@@ -8,9 +8,12 @@ from tools.browser import http_client
 logger = logging.getLogger(__name__)
 
 
-def register_scenarios(env: Any) -> None:
-    """Register todo app scenarios with the environment."""
-    
+def register_scenarios(env: Any) -> dict:
+    """Register todo app scenarios with the environment.
+
+    Returns a dict of scenario handles for use by tasks.py.
+    """
+
     @env.scenario("todo-complete")
     async def complete_todos(expected_count: int = 3) -> Any:
         """Mark todos as complete.
@@ -144,3 +147,9 @@ You need to mark enough items as done to reach {pct}% completion."""
             yield reward
         except Exception:
             yield 0.0
+
+    return {
+        "complete_todos": complete_todos,
+        "create_todo": create_todo,
+        "completion_rate": completion_rate,
+    }

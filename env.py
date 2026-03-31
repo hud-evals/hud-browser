@@ -5,6 +5,7 @@ This demonstrates:
 - @env.scenario() for different app-based evaluation flows
 - Dynamic app launching (2048 game, todo app, etc.)
 """
+
 import logging
 import sys
 
@@ -25,18 +26,19 @@ logger = logging.getLogger(__name__)
 env = Environment(name="browser")
 
 # Include tool routers
-from tools.browser import router as browser_router
 from tools.apps import router as apps_router
+from tools.browser import router as browser_router
 
 env.include_router(browser_router)
 env.include_router(apps_router)
 
-# Register scenarios (scenarios must use @env.scenario, not routers)
+# Register scenarios and collect handles automatically
 from scenarios.game_2048 import register_scenarios as register_2048_scenarios
 from scenarios.todo import register_scenarios as register_todo_scenarios
 
-register_2048_scenarios(env)
-register_todo_scenarios(env)
+SCENARIOS: dict = {}
+SCENARIOS.update(register_2048_scenarios(env))
+SCENARIOS.update(register_todo_scenarios(env))
 
 
 if __name__ == "__main__":
