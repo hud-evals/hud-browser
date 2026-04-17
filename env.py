@@ -42,4 +42,7 @@ SCENARIOS.update(register_todo_scenarios(env))
 
 
 if __name__ == "__main__":
+    from tools.browser import playwright, _discover_cdp_url
+
+    playwright._cdp_url = _discover_cdp_url()
     env.run(transport="stdio")
