@@ -7,6 +7,7 @@ This demonstrates:
 """
 
 import logging
+import subprocess
 import sys
 
 from hud import Environment
@@ -39,6 +40,21 @@ from scenarios.todo import register_scenarios as register_todo_scenarios
 SCENARIOS: dict = {}
 SCENARIOS.update(register_2048_scenarios(env))
 SCENARIOS.update(register_todo_scenarios(env))
+
+
+@env.tool()
+async def hud_validate() -> str:
+    """Run the test suite to validate the environment is working correctly."""
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"],
+        capture_output=True,
+        text=True,
+        cwd="/app",
+    )
+    output = result.stdout + result.stderr
+    if result.returncode != 0:
+        raise RuntimeError(output or f"pytest exited with code {result.returncode}")
+    return output
 
 
 if __name__ == "__main__":

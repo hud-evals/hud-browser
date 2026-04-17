@@ -14,7 +14,7 @@ def register_scenarios(env: Any) -> dict:
     Returns a dict of scenario handles for use by tasks.py.
     """
 
-    @env.scenario("todo-complete")
+    @env.scenario("todo-complete", exclude_tools=["hud_validate"])
     async def complete_todos(expected_count: int = 3) -> Any:
         """Mark todos as complete.
         
@@ -66,7 +66,7 @@ Start by taking a screenshot."""
             logger.error("Todo evaluation failed: %s", e)
             yield 0.0
     
-    @env.scenario("todo-create")
+    @env.scenario("todo-create", exclude_tools=["hud_validate"])
     async def create_todo(title: str) -> Any:
         """Create a new todo item with a specific title.
         
@@ -108,7 +108,7 @@ The todo title must be exactly: {title}"""
         except Exception:
             yield 0.0
     
-    @env.scenario("todo-completion-rate")
+    @env.scenario("todo-completion-rate", exclude_tools=["hud_validate"])
     async def completion_rate(target_rate: float = 0.5) -> Any:
         """Complete a percentage of seeded todos.
         
