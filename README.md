@@ -2,13 +2,24 @@
 
 A visual browser automation environment with multiple web apps (2048 game, todo app). Agents interact through Playwright, computer-use tools, and app management APIs.
 
-## Quick Start
+## Setup
 
 ```bash
-uv sync                # install dependencies
-hud deploy .           # build and deploy to HUD platform
-hud sync tasks <name>  # upload task definitions
+uv sync
+hud set HUD_API_KEY=your-key-here   # CLI auth, get one at hud.ai/project/api-keys
 ```
+
+## Deploy & Run
+
+```bash
+hud deploy .                              # deploy the environment (once)
+hud sync tasks <taskset-name>             # push tasks to a taskset (fast, re-run on every task change)
+hud eval <taskset-name> --remote --full
+```
+
+**Iteration loop:** `hud deploy` is the slow step — run it once. After that, edit `tasks.py` and re-run `hud sync tasks` (takes seconds). Only redeploy when `env.py` or the Dockerfile changes.
+
+See [Deploy & Go Remote](https://docs.hud.ai/building/running-at-scale) for deploy flags, secrets, and auto-deploy options.
 
 ## Scenarios
 
