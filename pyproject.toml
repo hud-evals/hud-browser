@@ -6,7 +6,7 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
  "pydantic>=2.6,<3",
  "pydantic-settings>=2.2,<3",
- "hud-python==0.5.16",
+ "hud-python>=0.5.40",
  "playwright",
  "pyautogui",
  "httpx",
@@ -21,9 +21,6 @@ dependencies = [
 requires = [ "hatchling",]
 build-backend = "hatchling.build"
 
-[project.scripts]
-hud-browser-controller = "controller.__main__:main"
-
 [tool.hud]
 image = "hud-browser:dev"
 
@@ -31,4 +28,4 @@ image = "hud-browser:dev"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = [ "controller", "environment",]
+packages = ["tools"]
