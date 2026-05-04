@@ -42,8 +42,9 @@ def _discover_cdp_url(timeout_sec: float = 60.0, poll_interval_sec: float = 0.5)
     return None
 
 
-# Playwright tool with CDP connection
-playwright = PlaywrightTool(cdp_url=_discover_cdp_url())
+# Playwright tool – CDP URL is discovered at runtime (env.py __main__),
+# not at import time, so that `hud sync tasks` doesn't block.
+playwright = PlaywrightTool(cdp_url=None)
 
 # Register tools with router
 router.tool(playwright)

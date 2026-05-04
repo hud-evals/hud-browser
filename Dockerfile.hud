@@ -21,10 +21,10 @@ COPY backend/pyproject.toml /app/backend/
 RUN cd /app/backend && uv pip install --system --break-system-packages .
 
 # Layer 3: Copy source code
-COPY env.py /app/
+COPY env.py tasks.py /app/
 COPY tools/ /app/tools/
-COPY scenarios/ /app/scenarios/
 COPY backend/ /app/backend/
+COPY tests/ /app/tests/
 
 # Auto-discover and install/build all frontend apps
 RUN set -e; \
