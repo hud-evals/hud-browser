@@ -36,8 +36,11 @@ class TestEvaluation:
         todo_client.post("/api/eval/seed")
         stats = todo_client.get("/api/eval/stats").json()
         assert stats["total_items"] == 5
-        assert stats["completed_items"] == 2
-        assert stats["pending_items"] == 3
+        assert stats["completed_items"] == 0  # seed is all-uncompleted: a clean grading baseline
+        assert stats["pending_items"] == 5
+        # seeding again resets, so it does not accumulate
+        todo_client.post("/api/eval/seed")
+        assert todo_client.get("/api/eval/stats").json()["total_items"] == 5
 
     def test_reset_clears_all(self, todo_client):
         todo_client.post("/api/eval/seed")
@@ -60,7 +63,7 @@ class TestEvaluation:
     def test_completion_rate(self, todo_client):
         todo_client.post("/api/eval/seed")
         rate = todo_client.get("/api/eval/completion_rate").json()
-        assert rate["completion_rate"] == pytest.approx(0.4)
+        assert rate["completion_rate"] == 0.0  # nothing is pre-completed after seed
 
     def test_seed_then_complete_all(self, todo_client):
         todo_client.post("/api/eval/seed")
