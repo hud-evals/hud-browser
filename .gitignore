@@ -64,6 +64,12 @@ MANIFEST
 .venv/
 uv.lock
 
+# HUD (account-specific build/eval artifacts)
+.hud/
+hud.lock.yaml
+.hud_eval.toml
+remote_tasks.json
+
 # Database
 *.db
 *.sqlite

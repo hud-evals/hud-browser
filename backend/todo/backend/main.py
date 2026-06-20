@@ -11,7 +11,7 @@ app = FastAPI(title="Todo API with Evaluation", version="0.2.0")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3003"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -309,37 +309,23 @@ def get_completion_rate():
 
 @app.post("/api/eval/seed")
 def seed_test_data():
-    """Seed the database with test data for evaluation purposes."""
+    """Seed a fixed set of UNCOMPLETED items for evaluation. Resets first, so repeated seeds do not
+    accumulate and the completed baseline is 0 — grading measures only the agent's work."""
     test_items = [
-        {"title": "Buy groceries", "description": "Get milk, eggs, and bread", "completed": True},
-        {
-            "title": "Walk the dog",
-            "description": "Take Max for a 30-minute walk",
-            "completed": True,
-        },
-        {
-            "title": "Finish project",
-            "description": "Complete the Q4 presentation",
-            "completed": False,
-        },
-        {"title": "Call mom", "description": "Weekly check-in call", "completed": False},
-        {
-            "title": "Schedule dentist",
-            "description": "Book appointment for cleaning",
-            "completed": False,
-        },
+        {"title": "Buy groceries", "description": "Get milk, eggs, and bread"},
+        {"title": "Walk the dog", "description": "Take Max for a 30-minute walk"},
+        {"title": "Finish project", "description": "Complete the Q4 presentation"},
+        {"title": "Call mom", "description": "Weekly check-in call"},
+        {"title": "Schedule dentist", "description": "Book appointment for cleaning"},
     ]
 
     conn = sqlite3.connect("app.db")
     c = conn.cursor()
-
+    c.execute("DELETE FROM items")  # reset so seeding is deterministic and non-accumulating
     for item in test_items:
         c.execute(
-            """
-            INSERT INTO items (title, description, completed) 
-            VALUES (?, ?, ?)
-        """,
-            (item["title"], item["description"], item["completed"]),
+            "INSERT INTO items (title, description, completed) VALUES (?, ?, ?)",
+            (item["title"], item["description"], False),
         )
 
     conn.commit()

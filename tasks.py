@@ -1,84 +1,68 @@
 """Tasks for the browser environment.
 
-Each task is created via scenario.task() and can be run locally or remotely:
+`hud eval tasks.py` and `hud sync tasks` collect the public `tasks` list below. Add a task by
+calling one of the env templates, setting a `.slug`, and appending it to the list. The rfb desktop
+is Linux-only, so verify a real rollout on the image / `--runtime hud`, not on macOS.
 
-    python local_test.py --list
-    python local_test.py --task reach_tile_256
-    python local_test.py --task complete_3 --model gpt-4o
+    hud eval tasks.py claude --task-ids 2048-reach-256 --runtime tcp://127.0.0.1:8765 -y
 """
 
-from env import (
-    GAME_2048_SYSTEM_PROMPT,
+from env import (  # noqa: F401  (re-export env for `hud eval tasks.py`)
     complete_todos,
     completion_rate,
     create_todo,
+    env,
     near_win,
     reach_score,
     reach_tile,
 )
 
-_GAME_2048_AGENT_CONFIG = {"system_prompt": GAME_2048_SYSTEM_PROMPT}
+# -- 2048: logarithmic partial credit ------------------------------------------
+_reach_256 = reach_tile(target=256)
+_reach_256.slug = "2048-reach-256"
 
-# -- 2048: partial credit (logarithmic scaling) --------------------------------
+_reach_512 = reach_tile(target=512)
+_reach_512.slug = "2048-reach-512"
 
-reach_tile_256 = reach_tile.task(target=256)
-reach_tile_256.slug = "2048-reach-256"
-reach_tile_256.agent_config = _GAME_2048_AGENT_CONFIG
+# -- 2048: near-win (binary) ---------------------------------------------------
+_near_2048 = near_win(target=2048)
+_near_2048.slug = "2048-near-win"
 
-reach_tile_512 = reach_tile.task(target=512)
-reach_tile_512.slug = "2048-reach-512"
-reach_tile_512.agent_config = _GAME_2048_AGENT_CONFIG
-
-# -- 2048: binary scoring (near-win) ------------------------------------------
-
-near_win_2048 = near_win.task(target=2048)
-near_win_2048.slug = "2048-near-win"
-near_win_2048.agent_config = _GAME_2048_AGENT_CONFIG
-
-near_win_1024 = near_win.task(target=1024)
-near_win_1024.slug = "2048-near-win-1024"
-near_win_1024.agent_config = _GAME_2048_AGENT_CONFIG
+_near_1024 = near_win(target=1024)
+_near_1024.slug = "2048-near-win-1024"
 
 # -- 2048: score target (linear partial credit) --------------------------------
+_score_5000 = reach_score(target_score=5000)
+_score_5000.slug = "2048-score-5000"
 
-score_5000 = reach_score.task(target_score=5000)
-score_5000.slug = "2048-score-5000"
-score_5000.agent_config = _GAME_2048_AGENT_CONFIG
+# -- todo: count-based partial credit ------------------------------------------
+_complete_3 = complete_todos(expected_count=3)
+_complete_3.slug = "todo-complete-3"
 
-# -- todo: partial credit (count-based) ----------------------------------------
+# -- todo: exact-title (binary) ------------------------------------------------
+_create_groceries = create_todo(title="Buy groceries")
+_create_groceries.slug = "todo-create-groceries"
 
-complete_3 = complete_todos.task(expected_count=3)
-complete_3.slug = "todo-complete-3"
+_create_meeting = create_todo(title="Schedule team meeting")
+_create_meeting.slug = "todo-create-meeting"
 
-# -- todo: binary scoring (exact match) ----------------------------------------
+# -- todo: rate-based partial credit -------------------------------------------
+_rate_50 = completion_rate(target_rate=0.5)
+_rate_50.slug = "todo-rate-50"
 
-create_groceries = create_todo.task(title="Buy groceries")
-create_groceries.slug = "todo-create-groceries"
+_rate_80 = completion_rate(target_rate=0.8)
+_rate_80.slug = "todo-rate-80"
 
-create_meeting = create_todo.task(title="Schedule team meeting")
-create_meeting.slug = "todo-create-meeting"
 
-# -- todo: partial credit (rate-based) -----------------------------------------
-
-rate_50 = completion_rate.task(target_rate=0.5)
-rate_50.slug = "todo-rate-50"
-
-rate_80 = completion_rate.task(target_rate=0.8)
-rate_80.slug = "todo-rate-80"
-
-# -- registry for discovery ----------------------------------------------------
-
-ALL_TASKS = {
-    # 2048 tasks
-    "reach_tile_256": reach_tile_256,
-    "reach_tile_512": reach_tile_512,
-    "near_win_2048": near_win_2048,
-    "near_win_1024": near_win_1024,
-    "score_5000": score_5000,
-    # todo tasks
-    "complete_3": complete_3,
-    "create_groceries": create_groceries,
-    "create_meeting": create_meeting,
-    "rate_50": rate_50,
-    "rate_80": rate_80,
-}
+tasks = [
+    _reach_256,
+    _reach_512,
+    _near_2048,
+    _near_1024,
+    _score_5000,
+    _complete_3,
+    _create_groceries,
+    _create_meeting,
+    _rate_50,
+    _rate_80,
+]
