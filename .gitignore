@@ -76,6 +76,9 @@ remote_tasks.json
 *.sqlite3
 app.db
 
+# Claude Code
+.claude/
+
 # IDEs
 .vscode/
 .idea/
