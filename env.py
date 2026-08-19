@@ -5,6 +5,10 @@ ONE browser is published TWO ways so any agent can drive it:
   * ``cdp``  — Chromium's DevTools endpoint (DOM + key events), for browser-native agents
   * ``rfb``  — the same browser on an Xvfb desktop served over VNC, for computer-use agents
 
+The browser runs in kiosk mode: the whole 1280x800 display is page, so a screenshot coordinate is a
+page coordinate and there is no omnibox for an agent to click into and lose its keystrokes. Tasks
+navigate over CDP (``_navigate``), not through a URL bar.
+
 ``@env.initialize`` launches the whole substrate as subprocesses — the desktop (Xvfb :1 + x11vnc +
 BrowserOS-with-CDP) and each app (a FastAPI backend + a Next.js frontend) — then publishes both
 capabilities; ``@env.shutdown`` tears it down. One self-contained launch path: no init system and no
@@ -138,7 +142,8 @@ async def _start_substrate() -> None:
     _procs.append(
         await _spawn("browseros", f"--remote-debugging-port={_CDP_PORT}", "--no-sandbox",
                      "--disable-gpu", "--disable-dev-shm-usage", "--disable-web-security",
-                     "--no-first-run", "--window-size=1280,800", "about:blank")
+                     "--no-first-run", "--kiosk", "--disable-session-crashed-bubble",
+                     "--window-size=1280,800", "about:blank")
     )
     for name, fe, be in _APPS:
         app = os.path.join(_BACKEND_DIR, name)
